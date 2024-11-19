@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,10 +12,12 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text HighScoreText;
     public GameObject GameOverText;
     
     private bool m_Started = false;
     private int m_Points;
+    private int m_HighScore;
     
     private bool m_GameOver = false;
 
@@ -36,6 +39,20 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+
+        //if (File.Exists(Path.Combine(Application.persistentDataPath, "sessionData.json")))
+        if(PlayerPrefs.HasKey("sessionData"))
+        {
+            //var json = File.ReadAllText(Path.Combine(Application.persistentDataPath, "sessionData.json"));
+            var json = PlayerPrefs.GetString("sessionData");
+            var sessionData = JsonUtility.FromJson<SessionData>(json);
+
+            m_HighScore = sessionData.HighScore;
+
+            HighScoreText.text = $"Best Score : {sessionData.PlayerName} : {m_HighScore}";
+        }
+
+        //HighScoreText.text = PlayerPrefs.GetString("forceSave");
     }
 
     private void Update()
@@ -65,12 +82,35 @@ public class MainManager : MonoBehaviour
     void AddPoint(int point)
     {
         m_Points += point;
-        ScoreText.text = $"Score : {m_Points}";
+        ScoreText.text = $"Score : {SceneData.PlayerName} : {m_Points}";        
     }
 
     public void GameOver()
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+
+        if(m_HighScore < m_Points)
+        {
+            m_HighScore = m_Points;
+            HighScoreText.text = $"Best Score : {SceneData.PlayerName} : {m_HighScore}";
+
+            var sessionData = new SessionData();
+            sessionData.PlayerName = SceneData.PlayerName;
+            sessionData.HighScore = m_HighScore;
+
+            // TODO: funktioniert im web nicht...
+            var json = JsonUtility.ToJson(sessionData, true);
+            //File.WriteAllText(Path.Combine(Application.persistentDataPath, "sessionData.json"), json);
+
+            PlayerPrefs.SetString("sessionData", json);
+
+            // https://discussions.unity.com/t/webgl-filesystem/565378/2
+            //Application.ExternalCall("syncfs", false);
+
+            // https://discussions.unity.com/t/webgl-save-load-issue/675056/11
+            //PlayerPrefs.SetString("forceSave", "test");
+            //PlayerPrefs.Save();
+        }        
     }
 }
